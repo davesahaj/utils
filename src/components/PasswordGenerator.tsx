@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -18,21 +17,21 @@ import {
 function generatePassword(
   length: number,
   opts: {
-    lowercase: boolean;
+    uppercase: boolean;
     numbers: boolean;
     symbols: boolean;
     readable: boolean;
   }
 ) {
-  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const nums = "0123456789";
   const syms = "!@#$%^&*()-_=+[]{}<>?";
-  let chars = "";
+  let chars = "abcdefghijklmnopqrstuvwxyz";
 
-  if (opts.lowercase) chars += lower;
+  if (opts.uppercase) chars += upper;
   if (opts.numbers) chars += nums;
   if (opts.symbols) chars += syms;
-  if (!chars) chars = lower;
+  if (!chars) chars = upper;
 
   if (opts.readable) {
     const vowels = "aeiou";
@@ -53,9 +52,25 @@ function generatePassword(
   ).join("");
 }
 
+function passwordStrength(password: string) {
+  if (!password) return { entropy: 0, score: 0 };
+
+  let charsetSize = 0;
+  if (/[a-z]/.test(password)) charsetSize += 26;
+  if (/[A-Z]/.test(password)) charsetSize += 26;
+  if (/\d/.test(password)) charsetSize += 10;
+  if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32;
+
+  const entropy = password.length * Math.log2(charsetSize);
+
+  const score = Math.min(100, Math.round((entropy / 100) * 100));
+
+  return { entropy, score };
+}
+
 export default function PasswordGenerator() {
   const [length, setLength] = useState(14);
-  const [lowercase, setLowercase] = useState(true);
+  const [uppercase, setuppercase] = useState(true);
   const [numbers, setNumbers] = useState(true);
   const [symbols, setSymbols] = useState(true);
   const [readable, setReadable] = useState(false);
@@ -65,7 +80,7 @@ export default function PasswordGenerator() {
     setLength((length) => newLength || length);
     setPassword(
       generatePassword(newLength || length, {
-        lowercase,
+        uppercase,
         numbers,
         symbols,
         readable,
@@ -77,8 +92,12 @@ export default function PasswordGenerator() {
     navigator.clipboard.writeText(password);
   };
 
+  useEffect(() => {
+    handleGenerate();
+  }, [numbers, symbols, readable, uppercase]);
+
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-3 gap-4">
       <Card>
         <CardHeader>
           <CardTitle>Password Generator</CardTitle>
@@ -113,7 +132,7 @@ export default function PasswordGenerator() {
             <Slider
               defaultValue={[length]}
               max={32}
-              min={6}
+              min={8}
               step={1}
               onValueChange={(val) => {
                 handleGenerate(val[0]);
@@ -123,21 +142,21 @@ export default function PasswordGenerator() {
 
           <div className="flex flex-col gap-6">
             <label className="flex items-center gap-2">
-              <Checkbox
-                checked={lowercase}
-                onCheckedChange={(val) => setLowercase(!!val)}
+              <Switch
+                checked={uppercase}
+                onCheckedChange={(val) => setuppercase(!!val)}
               />
-              Lowercase
+              uppercase
             </label>
             <label className="flex items-center gap-2">
-              <Checkbox
+              <Switch
                 checked={numbers}
                 onCheckedChange={(val) => setNumbers(!!val)}
               />
               Numbers
             </label>
             <label className="flex items-center gap-2">
-              <Checkbox
+              <Switch
                 checked={symbols}
                 onCheckedChange={(val) => setSymbols(!!val)}
               />
@@ -156,6 +175,20 @@ export default function PasswordGenerator() {
               placeholder="Your password will appear here..."
             />
             <Button onClick={copyToClipboard}>Copy</Button>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent>
+          <div className="overflow-hidden h-[90px] w-[180px] relative mx-auto mt-8">
+            <div
+              style={{
+                transform: `rotate(${
+                  45 + 1.8 * passwordStrength(password).score
+                }deg)`,
+              }}
+              className="absolute top-0 left-0 w-[180px] h-[180px] transition-colors border-b-primary border-r-primary rounded-[50%] border-[10px] border-amber-50"
+            />
           </div>
         </CardContent>
       </Card>
